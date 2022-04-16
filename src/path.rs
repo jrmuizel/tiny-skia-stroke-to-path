@@ -8,9 +8,6 @@ use alloc::vec::Vec;
 
 use crate::{Point, PathBuilder, Rect, Transform};
 
-use crate::scalar::SCALAR_MAX;
-
-
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub enum PathVerb {
     Move,
@@ -79,24 +76,6 @@ impl Path {
         Some(self)
     }
 
-    /// Sometimes in the drawing pipeline, we have to perform math on path coordinates, even after
-    /// the path is in device-coordinates. Tessellation and clipping are two examples. Usually this
-    /// is pretty modest, but it can involve subtracting/adding coordinates, or multiplying by
-    /// small constants (e.g. 2,3,4). To try to preflight issues where these optionations could turn
-    /// finite path values into infinities (or NaNs), we allow the upper drawing code to reject
-    /// the path if its bounds (in device coordinates) is too close to max float.
-    pub(crate) fn is_too_big_for_math(&self) -> bool {
-        // This value is just a guess. smaller is safer, but we don't want to reject largish paths
-        // that we don't have to.
-        const SCALE_DOWN_TO_ALLOW_FOR_SMALL_MULTIPLIES: f32 = 0.25;
-        const MAX: f32 = SCALAR_MAX * SCALE_DOWN_TO_ALLOW_FOR_SMALL_MULTIPLIES;
-
-        let b = self.bounds;
-
-        // use ! expression so we return true if bounds contains NaN
-        !(b.left() >= -MAX && b.top() >= -MAX && b.right() <= MAX && b.bottom() <= MAX)
-    }
-
     /// Returns an iterator over path's segments.
     pub fn segments(&self) -> PathSegmentsIter {
         PathSegmentsIter {
@@ -106,16 +85,6 @@ impl Path {
             is_auto_close: false,
             last_move_to: Point::zero(),
             last_point: Point::zero(),
-        }
-    }
-
-    pub(crate) fn edge_iter(&self) -> PathEdgeIter {
-        PathEdgeIter {
-            path: self,
-            verb_index: 0,
-            points_index: 0,
-            move_to: Point::zero(),
-            needs_close_line: false,
         }
     }
 
@@ -241,10 +210,6 @@ impl<'a> PathSegmentsIter<'a> {
         }
 
         false
-    }
-
-    pub(crate) fn curr_verb(&self) -> PathVerb {
-        self.path.verbs[self.verb_index - 1]
     }
 
     pub(crate) fn next_verb(&self) -> Option<PathVerb> {

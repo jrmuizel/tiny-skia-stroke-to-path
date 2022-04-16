@@ -112,8 +112,6 @@ macro_rules! impl_debug_display {
 pub struct FiniteF32(f32);
 
 impl FiniteF32 {
-    pub const FINITE_ZERO: FiniteF32 = FiniteF32(0.0);
-    pub const FINITE_ONE: FiniteF32 = FiniteF32(1.0);
 
     /// Creates a finite f32 number.
     ///
@@ -181,10 +179,6 @@ impl NormalizedF32 {
         }
     }
 
-    pub fn from_u8(n: u8) -> Self {
-        NormalizedF32(FiniteF32(f32::from(n) / 255.0))
-    }
-
     /// Creates a `NormalizedValue` clamping the given value to a 0..1 range.
     ///
     /// Returns zero in case of NaN or infinity.
@@ -195,12 +189,6 @@ impl NormalizedF32 {
     /// Returns the value as a primitive type.
     pub const fn get(self) -> f32 {
         self.0.get()
-    }
-
-    /// Returns the value as a `FiniteF32`.
-    #[inline]
-    pub const fn get_finite(&self) -> FiniteF32 {
-        self.0
     }
 }
 

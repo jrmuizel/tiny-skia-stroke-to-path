@@ -6,8 +6,6 @@
 
 use crate::Point;
 
-use crate::scalar::{SCALAR_NEARLY_ZERO, Scalar};
-
 #[cfg(all(not(feature = "std"), feature = "libm"))]
 use crate::scalar::FloatExt;
 
@@ -83,34 +81,6 @@ impl Transform {
         ts = ts.pre_concat(Transform::from_rotate(angle));
         ts = ts.pre_translate(-tx, -ty);
         ts
-    }
-
-    pub(crate) fn from_sin_cos_at(sin: f32, cos: f32, px: f32, py: f32) -> Self {
-        let cos_inv = 1.0 - cos;
-        Transform::from_row(
-            cos, sin, -sin, cos, sdot(sin, py, cos_inv, px), sdot(-sin, px, cos_inv, py)
-        )
-    }
-
-    pub(crate) fn from_poly_to_poly(
-        src1: Point,
-        src2: Point,
-        dst1: Point,
-        dst2: Point,
-    ) -> Option<Self> {
-        let tmp = from_poly2(src1, src2);
-        let res = tmp.invert()?;
-        let tmp = from_poly2(dst1, dst2);
-        Some(concat(tmp, res))
-    }
-
-    pub(crate) fn is_finite(&self) -> bool {
-        self.sx.is_finite() &&
-        self.ky.is_finite() &&
-        self.kx.is_finite() &&
-        self.sy.is_finite() &&
-        self.tx.is_finite() &&
-        self.ty.is_finite()
     }
 
     /// Checks that transform is identity.
@@ -238,100 +208,6 @@ impl Transform {
             }
         }
     }
-
-    /// Returns an inverted transform.
-    pub(crate) fn invert(&self) -> Option<Self> {
-        // Allow the trivial case to be inlined.
-        if self.is_identity() {
-            return Some(*self);
-        }
-
-        invert(self)
-    }
-}
-
-fn from_poly2(p0: Point, p1: Point) -> Transform {
-    Transform::from_row(
-        p1.y - p0.y,
-        p0.x - p1.x,
-        p1.x - p0.x,
-        p1.y - p0.y,
-        p0.x,
-        p0.y,
-    )
-}
-
-fn invert(ts: &Transform) -> Option<Transform> {
-    debug_assert!(!ts.is_identity());
-
-    if ts.is_scale_translate() {
-        if ts.has_scale() {
-            let inv_x = ts.sx.invert();
-            let inv_y = ts.sy.invert();
-            Some(Transform::from_row(inv_x, 0.0, 0.0, inv_y, -ts.tx * inv_x, -ts.ty * inv_y))
-        } else {
-            // translate only
-            Some(Transform::from_translate(-ts.tx, -ts.ty))
-        }
-    } else {
-        let inv_det = inv_determinant(ts)?;
-        let inv_ts = compute_inv(ts, inv_det);
-
-        if inv_ts.is_finite() {
-            Some(inv_ts)
-        } else {
-            None
-        }
-    }
-}
-
-fn inv_determinant(ts: &Transform) -> Option<f64> {
-    let det = dcross(ts.sx as f64, ts.sy as f64, ts.kx as f64, ts.ky as f64);
-
-    // Since the determinant is on the order of the cube of the matrix members,
-    // compare to the cube of the default nearly-zero constant (although an
-    // estimate of the condition number would be better if it wasn't so expensive).
-    let tolerance = SCALAR_NEARLY_ZERO * SCALAR_NEARLY_ZERO * SCALAR_NEARLY_ZERO;
-    if (det as f32).is_nearly_zero_within_tolerance(tolerance) {
-        None
-    } else {
-        Some(1.0 / det)
-    }
-}
-
-fn compute_inv(ts: &Transform, inv_det: f64) -> Transform {
-    Transform::from_row(
-        (ts.sy as f64 * inv_det) as f32,
-        (-ts.ky as f64 * inv_det) as f32,
-        (-ts.kx as f64 * inv_det) as f32,
-        (ts.sx as f64 * inv_det) as f32,
-        dcross_dscale(
-            ts.kx,
-            ts.ty,
-            ts.sy,
-            ts.tx,
-            inv_det,
-        ),
-        dcross_dscale(
-            ts.ky,
-            ts.tx,
-            ts.sx,
-            ts.ty,
-            inv_det,
-        ),
-    )
-}
-
-fn dcross(a: f64, b: f64, c: f64, d: f64) -> f64 {
-    a * b - c * d
-}
-
-fn dcross_dscale(a: f32, b: f32, c: f32, d: f32, scale: f64) -> f32 {
-    (dcross(a as f64, b as f64, c as f64, d as f64) * scale) as f32
-}
-
-fn sdot(a: f32, b: f32, c: f32, d: f32) -> f32 {
-    a * b + c * d
 }
 
 fn concat(a: Transform, b: Transform) -> Transform {

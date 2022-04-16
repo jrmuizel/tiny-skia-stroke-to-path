@@ -37,11 +37,8 @@ extern crate alloc;
 
 mod dash;
 
-//mod fixed_point;
 mod floating_point;
 mod geom;
-mod math;
-//mod path64;
 mod path;
 mod path_builder;
 mod path_geometry;
