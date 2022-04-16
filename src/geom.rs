@@ -421,149 +421,6 @@ pub struct ScreenIntRect {
     height: LengthU32,
 }
 
-impl ScreenIntRect {
-    /// Creates a new `ScreenIntRect`.
-    pub fn from_xywh(x: u32, y: u32, width: u32, height: u32) -> Option<Self> {
-        i32::try_from(x).ok()?;
-        i32::try_from(y).ok()?;
-        i32::try_from(width).ok()?;
-        i32::try_from(height).ok()?;
-
-        x.checked_add(width)?;
-        y.checked_add(height)?;
-
-        let width = LengthU32::new(width)?;
-        let height = LengthU32::new(height)?;
-
-        Some(ScreenIntRect { x, y, width, height })
-    }
-
-    /// Creates a new `ScreenIntRect`.
-    pub const fn from_xywh_safe(x: u32, y: u32, width: LengthU32, height: LengthU32) -> Self {
-        ScreenIntRect { x, y, width, height }
-    }
-
-    /// Returns rect's X position.
-    pub fn x(&self) -> u32 {
-        self.x
-    }
-
-    /// Returns rect's Y position.
-    pub fn y(&self) -> u32 {
-        self.y
-    }
-
-    /// Returns rect's width.
-    pub fn width(&self) -> u32 {
-        self.width.get()
-    }
-
-    /// Returns rect's height.
-    pub fn height(&self) -> u32 {
-        self.height.get()
-    }
-
-    /// Returns rect's width.
-    pub fn width_safe(&self) -> LengthU32 {
-        self.width
-    }
-
-    /// Returns rect's left edge.
-    pub fn left(&self) -> u32 {
-        self.x
-    }
-
-    /// Returns rect's top edge.
-    pub fn top(&self) -> u32 {
-        self.y
-    }
-
-    /// Returns rect's right edge.
-    ///
-    /// The right edge is at least 1.
-    pub fn right(&self) -> u32 {
-        // No overflow is guaranteed by constructors.
-        self.x + self.width.get()
-    }
-
-    /// Returns rect's bottom edge.
-    ///
-    /// The bottom edge is at least 1.
-    pub fn bottom(&self) -> u32 {
-        // No overflow is guaranteed by constructors.
-        self.y + self.height.get()
-    }
-
-    /// Returns rect's size.
-    pub fn size(&self) -> IntSize {
-        IntSize {
-            width: self.width,
-            height: self.height,
-        }
-    }
-
-    /// Checks that the rect is completely includes `other` Rect.
-    pub fn contains(&self, other: &Self) -> bool {
-        self.x <= other.x &&
-            self.y <= other.y &&
-            self.right() >= other.right() &&
-            self.bottom() >= other.bottom()
-    }
-
-    /// Converts into a `IntRect`.
-    pub fn to_int_rect(&self) -> IntRect {
-        // Everything is already checked by constructors.
-        IntRect::from_xywh(
-            self.x as i32,
-            self.y as i32,
-            self.width.get(),
-            self.height.get(),
-        ).unwrap()
-    }
-
-    /// Converts into a `Rect`.
-    pub fn to_rect(&self) -> Rect {
-        // Can't fail, because `ScreenIntRect` is always valid.
-        // And u32 always fits into f32.
-        Rect::from_ltrb(
-            self.x as f32,
-            self.y as f32,
-            self.x as f32 + self.width.get() as f32,
-            self.y as f32 + self.height.get() as f32,
-        ).unwrap()
-    }
-}
-
-#[cfg(test)]
-mod screen_int_rect_tests {
-    use super::*;
-
-    #[test]
-    fn tests() {
-        assert_eq!(ScreenIntRect::from_xywh(0, 0, 0, 0), None);
-        assert_eq!(ScreenIntRect::from_xywh(0, 0, 1, 0), None);
-        assert_eq!(ScreenIntRect::from_xywh(0, 0, 0, 1), None);
-
-        assert_eq!(ScreenIntRect::from_xywh(0, 0, core::u32::MAX, core::u32::MAX), None);
-        assert_eq!(ScreenIntRect::from_xywh(0, 0, 1, core::u32::MAX), None);
-        assert_eq!(ScreenIntRect::from_xywh(0, 0, core::u32::MAX, 1), None);
-
-        assert_eq!(ScreenIntRect::from_xywh(core::u32::MAX, 0, 1, 1), None);
-        assert_eq!(ScreenIntRect::from_xywh(0, core::u32::MAX, 1, 1), None);
-
-        assert_eq!(ScreenIntRect::from_xywh(core::u32::MAX, core::u32::MAX, core::u32::MAX, core::u32::MAX), None);
-
-        let r = ScreenIntRect::from_xywh(1, 2, 3, 4).unwrap();
-        assert_eq!(r.x(), 1);
-        assert_eq!(r.y(), 2);
-        assert_eq!(r.width(), 3);
-        assert_eq!(r.height(), 4);
-        assert_eq!(r.right(), 4);
-        assert_eq!(r.bottom(), 6);
-    }
-}
-
-
 /// A rectangle defined by left, top, right and bottom edges.
 ///
 /// Can have zero width and/or height. But not a negative one.
@@ -661,31 +518,6 @@ impl Rect {
         ).unwrap()
     }
 
-    /// Converts into an `IntRect` rounding outwards.
-    ///
-    /// Width and height are guarantee to be >= 1.
-    pub(crate) fn round_out(&self) -> IntRect {
-        IntRect::from_xywh(
-            i32::saturate_floor(self.x()),
-            i32::saturate_floor(self.y()),
-            core::cmp::max(1, i32::saturate_ceil(self.width()) as u32),
-            core::cmp::max(1, i32::saturate_ceil(self.height()) as u32),
-        ).unwrap()
-    }
-
-    /// Returns an intersection of two rectangles.
-    ///
-    /// Returns `None` otherwise.
-    pub(crate) fn intersect(&self, other: &Self) -> Option<Self> {
-        let left = self.x().max(other.x());
-        let top = self.y().max(other.y());
-
-        let right = self.right().min(other.right());
-        let bottom = self.bottom().min(other.bottom());
-
-        Rect::from_ltrb(left, top, right, bottom)
-    }
-
     /// Creates a Rect from Point array.
     ///
     /// Returns None if count is zero or if Point array contains an infinity or NaN.
@@ -735,19 +567,6 @@ impl Rect {
         } else {
             None
         }
-    }
-
-    pub(crate) fn inset(&mut self, dx: f32, dy: f32) -> Option<Self> {
-        Rect::from_ltrb(
-            self.left() + dx,
-            self.top() + dy,
-            self.right() - dx,
-            self.bottom() - dy,
-        )
-    }
-
-    pub(crate) fn outset(&mut self, dx: f32, dy: f32) -> Option<Self> {
-        self.inset(-dx, -dy)
     }
 }
 

@@ -155,6 +155,7 @@ fn find_first_interval(dash_array: &[f32], mut dash_offset: f32) -> (f32, usize)
     (dash_array[0], 0)
 }
 
+/// Convert a path to a dashed equivalent
 pub fn dash(src: &Path, dash: &StrokeDash, res_scale: f32) -> Option<Path> {
     // We do not support the `cull_path` branch here.
     // Skia has a lot of code for cases when a path contains only a single zero-length line
