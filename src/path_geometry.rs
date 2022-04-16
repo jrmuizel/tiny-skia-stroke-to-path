@@ -1047,49 +1047,6 @@ impl AutoConicToQuads {
 }
 
 
-pub fn chop_mono_cubic_at_x(src: &[Point; 4], x: f32, dst: &mut [Point; 7]) -> bool {
-    cubic_dchop_at_intercept(src, x, true, dst)
-}
-
-pub fn chop_mono_cubic_at_y(src: &[Point; 4], y: f32, dst: &mut [Point; 7]) -> bool {
-    cubic_dchop_at_intercept(src, y, false, dst)
-}
-
-fn cubic_dchop_at_intercept(
-    src: &[Point; 4],
-    intercept: f32,
-    is_vertical: bool,
-    dst: &mut [Point; 7],
-) -> bool {
-    use crate::path64::{cubic64::Cubic64, point64::Point64, line_cubic_intersections};
-
-    let src = [
-        Point64::from_point(src[0]),
-        Point64::from_point(src[1]),
-        Point64::from_point(src[2]),
-        Point64::from_point(src[3]),
-    ];
-
-    let cubic = Cubic64::new(src);
-    let mut roots = [0.0; 3];
-    let count = if is_vertical {
-        line_cubic_intersections::vertical_intersect(&cubic, f64::from(intercept), &mut roots)
-    } else {
-        line_cubic_intersections::horizontal_intersect(&cubic, f64::from(intercept), &mut roots)
-    };
-
-    if count > 0 {
-        let pair = cubic.chop_at(roots[0]);
-        for i in 0..7 {
-            dst[i] = pair.points[i].to_point();
-        }
-
-        true
-    } else {
-        false
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
